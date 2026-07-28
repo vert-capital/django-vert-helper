@@ -1,0 +1,1 @@
+# se baseie no vertc-gerador-documentos-backend

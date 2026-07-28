@@ -1,0 +1,103 @@
+Objetivo desta biblioteca:
+* Monitorá serviços como S3, Kafka e possíveis serviços que poderão ser definidos pelo settings
+* Registrar ações ( funções ) que poderão ser vinculada como sugestão de execução no caso de falha de algum serviço, ou apenas serão ações para resolver/facilitar alguma questão no sistema
+* Retornar via API (api/helper/v1/healthcare e  api/helper/v1/actions ) as ações e as informações de saúde no healthcare
+* Teremos alguns funções de check de saúde para S3, Kafka e Postgres
+* Usuário poderá setar qual função para realizar o check de saúde
+* Disponibilizar saúde da aplicação em sí ( alteração no dockerfile provavelmente ) 
+* Disponibilizar versão atual da aplicação ( commit )
+* Saúde de aplicação (dockerfile) e commit deverão ser disponibilizados numa api em JSON se possível ( deverá ser acessível mesmo sem o Django estar funcionando ): api/helper/v1/app-health
+* Deveremos ter uma documentação de como criar as ações, como configurar o check de saúde no settings, como deve retornar uma função personalizada de check de saude e como deve ficar o Dockerfile com as alterações( nossos dockerfile são padronizados )
+
+
+Teremos ações programadas para aplicações e microsserviços que poderão resolver diversos gargalos
+essas ações serão acionadas via API
+Não penso em salvar isso em um banco de dados, mas se for facilitar o código, podemos armazenar
+Caso use o banco de dados, crie uma PK com UUID
+Caso não use, crie um campo SLUG para que possamos referenciar a função na API ao chama-las
+Exemplo:
+Ação - Gerar documento via CSV
+Label - Gerar documento via arquivo CSV, simulando fluxo do lambda S3
+Função: ...
+Questionário: 
+	* Qual workflow ? - Lista de workflows
+	* Arquivo: FormField do arquivo
+Resposta:
+	Workflow está inativo !
+	Ative o workflow seguindo os seguintes passos 
+	....
+
+
+Como lidaremos com serviço ? 
+Kafka fora: 
+* Provavelmente melhor caminho é criar ações especificas para isso
+	exemplo: Gerar PDF via API
+* Teremos que criar um campo "sugerir ação caso os seguinte serviços estejam com problema:", será um array de serviços
+
+
+possível configuração no settings:
+{
+    "permission_class": "IsAuthenticated",
+    "services": {
+        "label": "PostgreSQL",
+        "postgres": {
+            "context": {
+                "pg_user": "postgres",
+                "pg_password": "postgres",
+                "pg_db": "document_generator",
+                "pg_port": 5432
+            },
+            "function": "vert_helper.healthcare.postgres.check_postgres_service"
+        },
+        "S3": {
+            "label": "AWS S3",
+            "context": {
+                "aws_access_key_id": "your_access_key",
+                "aws_secret_access_key": "your_secret_key",
+                "bucket_name": "your_bucket_name"
+            },
+            "function": "vert_helper.healthcare.s3.check_s3_service"
+        },
+        "viacep_ws": {
+            "label": "ViaCEP Web Service",
+            "context": {
+                "base_url": "https://viacep.com.br/ws/"
+            },
+            "function": "custom_functions.check_viacep_service"
+        }
+    }
+}
+
+Possível definição das ações em código ( levando em conta que teremos uma action que realizaria o "cadastro" )
+
+@helper_action(services=["S3", "Kafka"], name="Executar algo sem kafka", description="Executa uma ação sem Kafka")
+def execute_without_kafka(object_id):
+    try:
+        ...
+        return {"status": "success", "message": f"Executed action for object {object_id} without Kafka."}
+    except:
+        ...
+        return {"status": "error", "message": f"Failed to execute action for object {object_id} without Kafka."}
+    
+    
+# exemplos de retorno: 
+# {
+#     "status": "success",
+#     "message": "Executed action for object 123 without Kafka."
+# }
+
+# {
+#     "status": "error",
+#     "message": "Failed to execute action for object 123 without Kafka."
+# }
+
+# {
+#     "status": "info",
+#     "message": "Objeto 123 não possui dados suficientes para executar a ação sem Kafka. Recomendo as seguintes verificações ou ações:",
+#     "steps": [
+#         "Verifique se o objeto 123 possui todos os campos obrigatórios preenchidos.",
+#         "Confirme se o objeto 123 está em um estado válido para a execução da ação.",
+#         "Considere adicionar dados adicionais ao objeto 123 para atender aos requisitos da ação.",
+#         "Se possível, consulte a documentação da API para entender os pré-requisitos da ação sem Kafka."
+#     ]
+# }
