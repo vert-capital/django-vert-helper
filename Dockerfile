@@ -25,6 +25,15 @@ RUN pip install -r requirements.txt
 # COPY .docker/ssh/* /root/.ssh/
 # RUN chmod -R 600 /root/.ssh/id_*
 
+# Keep packages installed outside Poetry above the minimum secure versions
+# required by the image vulnerability scan.
+RUN pip install --no-cache-dir --upgrade \
+    "setuptools>=78.1.1" \
+    "msgpack>=1.2.1"
+# pip is only required while building the image. Removing it also removes its
+# vendored dependency SBOM, which contains packages that are not used at runtime.
+RUN python -m pip uninstall --yes pip
+
 COPY ./ ./
 
 # set date on image
