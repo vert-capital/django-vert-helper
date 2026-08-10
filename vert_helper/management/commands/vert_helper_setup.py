@@ -32,6 +32,8 @@ class Command(BaseCommand):
             "Actions -> "
             f"Criadas: {actions_result['created']}, "
             f"Atualizadas: {actions_result['updated']}, "
-            f"Deletadas: {actions_result['deleted']}"
+            f"Deletadas: {actions_result['deleted']},"
+            f"Slugs vistos: {actions_result['seen_slugs']}, "
+            f"Slugs deletados: {actions_result['deleted_slugs']}"
         )
         self.stdout.write(f"Scheduler -> {scheduler_message}")

@@ -12,3 +12,5 @@ class Command(BaseCommand):
         self.stdout.write(f"Criadas: {result['created']}")
         self.stdout.write(f"Atualizadas: {result['updated']}")
         self.stdout.write(f"Deletadas: {result['deleted']}")
+        self.stdout.write(f"Slugs vistos: {result['seen_slugs']}")
+        self.stdout.write(f"Slugs deletados: {result['deleted_slugs']}")

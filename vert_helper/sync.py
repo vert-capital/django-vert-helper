@@ -157,12 +157,15 @@ def sync_actions_from_registry() -> dict[str, int]:
             created += 1
         else:
             updated += 1
-
+    deleted_slugs = []
     if seen_slugs:
-        deleted, _ = Action.objects.exclude(slug__in=seen_slugs).delete()
+        deleted_slugs = Action.objects.exclude(slug__in=seen_slugs).values_list("slug", flat=True)
+        deleted, _ = Action.objects.filter(slug__in=deleted_slugs).delete()
 
     return {
         "created": created,
         "updated": updated,
         "deleted": deleted,
+        "seen_slugs": seen_slugs,
+        "deleted_slugs": deleted_slugs,
     }
