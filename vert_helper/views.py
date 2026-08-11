@@ -130,7 +130,9 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         registered = get_registered_actions().get(action_obj.slug)
         if registered:
             try:
-                result = registered.function(responses)
+                # Responses it's a kwargs dict, so we can unpack it directly into the function call
+                action_function = registered.function
+                result = action_function(**responses)
             except Exception as exc:
                 result = {
                     "status": "error",
