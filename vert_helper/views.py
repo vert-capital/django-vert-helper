@@ -132,7 +132,7 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
             try:
                 # Responses it's a kwargs dict, so we can unpack it directly into the function call
                 action_function = registered.function
-                result = action_function(**responses)
+                result = action_function(responses)
             except Exception as exc:
                 result = {
                     "status": "error",
