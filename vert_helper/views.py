@@ -127,7 +127,12 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         data = request.data
 
         if "questions" in data:
-            questions = data.get("questions")
+            questions_data = data.get("questions")
+            # Garantir que questions é um dicionário
+            if isinstance(questions_data, dict):
+                questions = questions_data
+            else:
+                questions = {}
         else:
             questions = {}
             for key in data.keys():
