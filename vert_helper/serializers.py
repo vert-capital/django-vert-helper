@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from rest_framework import serializers
 
 from .models import Action, Question
@@ -73,8 +75,22 @@ class ActionDetailSerializer(serializers.ModelSerializer):
 
 
 class ActionExecuteSerializer(serializers.Serializer):
-    questions = serializers.DictField(
-        child=serializers.JSONField(),
-        required=True,
-        allow_empty=False,
-    )
+    questions = serializers.DictField(required=True, allow_empty=False)
+
+    def to_internal_value(self, data):
+        if hasattr(data, "dict"):
+            mutable_data = data.dict()
+        else:
+            mutable_data = dict(data)
+
+        questions = mutable_data.get("questions")
+
+        if isinstance(questions, str):
+            try:
+                mutable_data["questions"] = json.loads(questions)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError(
+                    {"questions": "Campo questions deve conter um JSON valido."}
+                ) from exc
+
+        return super().to_internal_value(mutable_data)

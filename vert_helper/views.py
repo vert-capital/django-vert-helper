@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
+from django.core.files.uploadedfile import UploadedFile
 from django.db.models import Exists, OuterRef, Prefetch
 from django.db.models.functions import Lower
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -68,6 +72,44 @@ class HealthcareView(APIView):
 class ActionViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = VertHelperPagination
     lookup_field = "slug"
+    parser_classes = (JSONParser, FormParser, MultiPartParser)
+
+    @staticmethod
+    def _extract_question_key(field_name: str) -> str:
+        if field_name.startswith("questions[") and field_name.endswith("]"):
+            return field_name[len("questions[") : -1]
+        return field_name
+
+    @classmethod
+    def _merge_uploaded_files(cls, responses: dict, files: Mapping[str, UploadedFile]) -> dict:
+        merged = dict(responses)
+        for field_name, uploaded in files.items():
+            question_key = cls._extract_question_key(field_name)
+            merged[question_key] = uploaded
+        return merged
+
+    @classmethod
+    def _to_json_safe(cls, value):
+        if isinstance(value, UploadedFile):
+            return {
+                "name": value.name,
+                "size": value.size,
+                "content_type": value.content_type,
+            }
+
+        if isinstance(value, dict):
+            return {
+                key: cls._to_json_safe(item)
+                for key, item in value.items()
+            }
+
+        if isinstance(value, list):
+            return [cls._to_json_safe(item) for item in value]
+
+        if isinstance(value, tuple):
+            return [cls._to_json_safe(item) for item in value]
+
+        return value
 
     def get_permissions(self):
         return [get_permission_class()()]
@@ -125,6 +167,11 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         responses = serializer.validated_data["questions"]
+        responses_with_files = self._merge_uploaded_files(
+            responses,
+            request.FILES,
+        )
+        persisted_responses = self._to_json_safe(responses_with_files)
 
         autodiscover_actions()
         registered = get_registered_actions().get(action_obj.slug)
@@ -132,7 +179,7 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
             try:
                 # Responses it's a kwargs dict, so we can unpack it directly into the function call
                 action_function = registered.function
-                result = action_function(responses)
+                result = action_function(responses_with_files)
             except Exception as exc:
                 result = {
                     "status": "error",
@@ -151,7 +198,7 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
 
         execution = ActionExecution.objects.create(
             action=action_obj,
-            responses=responses,
+            responses=persisted_responses,
             result=result,
             executed_by=(
                 request.user

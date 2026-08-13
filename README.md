@@ -66,6 +66,9 @@ VERT_HELPER_HEALTH_LOG_RETENTION_DAYS = 15
 
 ## Uso
 
+Guia completo de configuracao e exemplos da API:
+- [MANUAL_DE_USO.MD](MANUAL_DE_USO.MD)
+
 ```python
 from vert_helper import get_vert_helper_settings
 
@@ -99,7 +102,7 @@ Endpoints expostos por padrao:
 - `GET /api/helper/v1/healthcare/`
 - `GET /api/helper/v1/actions/`
 - `GET /api/helper/v1/actions/<slug>/`
-- `POST /api/helper/v1/actions/<slug>/execute/`
+- `POST /api/helper/v1/actions/<slug>/execute/` (aceita `application/json` e `multipart/form-data`)
 
 ## Comandos de Management
 
@@ -164,7 +167,7 @@ o `vert_helper_setup` registra duas tarefas:
 Se `SCHEDULER` estiver vazio (`None`), nenhuma tarefa é agendada automaticamente.
 
 ### Mais informações
-- Manual de uso: `MANUAL_DE_USO.MD`
+- Manual de uso: [MANUAL_DE_USO.MD](MANUAL_DE_USO.MD)
 
 ## Documentacao Tecnica
 

@@ -373,6 +373,10 @@ curl http://localhost:8000/api/helper/v1/actions/generate-report/
 
 **POST** `/api/helper/v1/actions/<slug>/execute/`
 
+Voce pode enviar em `application/json` (sem arquivo) ou `multipart/form-data` (com upload).
+
+#### Exemplo JSON (sem arquivo)
+
 ```bash
 curl -X POST http://localhost:8000/api/helper/v1/actions/generate-report/execute/ \
   -H "Content-Type: application/json" \
@@ -383,6 +387,27 @@ curl -X POST http://localhost:8000/api/helper/v1/actions/generate-report/execute
     }
   }'
 ```
+
+#### Exemplo multipart/form-data (com upload de arquivo)
+
+Quando houver pergunta do tipo `file`, envie `questions` como JSON string e o arquivo como campo de formulario.
+
+```bash
+curl -X POST http://localhost:8000/api/helper/v1/actions/import-users/execute/ \
+    -H "Authorization: Bearer <token>" \
+    -F 'questions={"operation":"upsert","delimiter":";"}' \
+    -F 'csv_file=@/caminho/usuarios.csv;type=text/csv'
+```
+
+Tambem e aceito enviar arquivo no formato `questions[chave]`:
+
+```bash
+curl -X POST http://localhost:8000/api/helper/v1/actions/import-users/execute/ \
+    -F 'questions={"operation":"upsert"}' \
+    -F 'questions[csv_file]=@/caminho/usuarios.csv;type=text/csv'
+```
+
+Na funcao Python registrada com `@helper_action`, o arquivo chega dentro de `responses` como `UploadedFile`.
 
 **Resposta (sucesso):**
 ```json
