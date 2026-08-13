@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
-from django.contrib.auth import get_user_model
+
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 
 def create_helper_auth_user(stdout=None, style=None) -> str | None:

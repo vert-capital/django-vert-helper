@@ -41,7 +41,7 @@ VERT_HELPER = {
         "postgres": {
             "function": "vert_helper.health_checks.postgres.check_postgres",
         },
-        
+
         # Novo: Health checks de filas Django-Q2
         "q2_default": {
             "function": "vert_helper.health_checks.django_q2.check_django_q2_queue",
@@ -50,7 +50,7 @@ VERT_HELPER = {
                 "expected_count": 1,  # Esperamos 1 cluster na fila default
             },
         },
-        
+
         "q2_long": {
             "function": "vert_helper.health_checks.django_q2.check_django_q2_queue",
             "context": {
@@ -58,7 +58,7 @@ VERT_HELPER = {
                 "expected_count": 1,
             },
         },
-        
+
         "q2_priority": {
             "function": "vert_helper.health_checks.django_q2.check_django_q2_queue",
             "context": {

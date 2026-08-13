@@ -74,23 +74,33 @@ class ActionDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class ActionExecuteSerializer(serializers.Serializer):
-    questions = serializers.DictField(required=True, allow_empty=False)
+class QuestionsField(serializers.Field):
+    default_error_messages = {
+        "invalid_json": "Formato JSON inválido.",
+        "invalid_type": "O campo questions deve ser um objeto.",
+    }
 
     def to_internal_value(self, data):
-        if hasattr(data, "dict"):
-            mutable_data = data.dict()
-        else:
-            mutable_data = dict(data)
+        if data in (None, ""):
+            return {}
 
-        questions = mutable_data.get("questions")
-
-        if isinstance(questions, str):
+        if isinstance(data, str):
             try:
-                mutable_data["questions"] = json.loads(questions)
-            except json.JSONDecodeError as exc:
-                raise serializers.ValidationError(
-                    {"questions": "Campo questions deve conter um JSON valido."}
-                ) from exc
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                self.fail("invalid_json")
 
-        return super().to_internal_value(mutable_data)
+        if isinstance(data, dict):
+            return data
+
+        if hasattr(data, "items"):
+            return dict(data.items())
+
+        self.fail("invalid_type")
+
+    def to_representation(self, value):
+        return value
+
+
+class ActionExecuteSerializer(serializers.Serializer):
+    questions = QuestionsField(default=dict)

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import os
-
-from django.contrib.auth.models import User
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
 

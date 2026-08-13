@@ -6,7 +6,7 @@ from django.apps import apps
 from django.conf import settings
 from django.db import transaction
 
-from .models import Action, Service, Question
+from .models import Action, Question, Service
 from .registry import get_registered_actions
 
 

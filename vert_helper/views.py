@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+import re
 
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models import Exists, OuterRef, Prefetch
 from django.db.models.functions import Lower
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -74,43 +74,6 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "slug"
     parser_classes = (JSONParser, FormParser, MultiPartParser)
 
-    @staticmethod
-    def _extract_question_key(field_name: str) -> str:
-        if field_name.startswith("questions[") and field_name.endswith("]"):
-            return field_name[len("questions[") : -1]
-        return field_name
-
-    @classmethod
-    def _merge_uploaded_files(cls, responses: dict, files: Mapping[str, UploadedFile]) -> dict:
-        merged = dict(responses)
-        for field_name, uploaded in files.items():
-            question_key = cls._extract_question_key(field_name)
-            merged[question_key] = uploaded
-        return merged
-
-    @classmethod
-    def _to_json_safe(cls, value):
-        if isinstance(value, UploadedFile):
-            return {
-                "name": value.name,
-                "size": value.size,
-                "content_type": value.content_type,
-            }
-
-        if isinstance(value, dict):
-            return {
-                key: cls._to_json_safe(item)
-                for key, item in value.items()
-            }
-
-        if isinstance(value, list):
-            return [cls._to_json_safe(item) for item in value]
-
-        if isinstance(value, tuple):
-            return [cls._to_json_safe(item) for item in value]
-
-        return value
-
     def get_permissions(self):
         return [get_permission_class()()]
 
@@ -160,26 +123,67 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
             return ActionDetailSerializer
         return ActionListSerializer
 
+    def _build_execute_payload(self, request):
+        data = request.data
+
+        if "questions" in data:
+            questions = data.get("questions")
+        else:
+            questions = {}
+            for key in data.keys():
+                match = re.match(r"^questions\[(.+)\]$", key)
+                if match:
+                    questions[match.group(1)] = data.get(key)
+
+        # Mesclar com files do FormData
+        if request.FILES:
+            for field_name, uploaded_file in request.FILES.items():
+                # Extrair o question ID de questions[id]
+                if field_name.startswith("questions[") and field_name.endswith("]"):
+                    question_id = field_name[len("questions["):-1]
+                else:
+                    question_id = field_name
+                questions[question_id] = uploaded_file
+
+        return {"questions": questions}
+
+    @staticmethod
+    def _to_json_safe(value):
+        """Converte valores para JSON-safe (UploadedFile -> dict)."""
+        if isinstance(value, UploadedFile):
+            return {
+                "name": value.name,
+                "size": value.size,
+                "content_type": value.content_type,
+            }
+
+        if isinstance(value, dict):
+            return {
+                key: ActionViewSet._to_json_safe(item)
+                for key, item in value.items()
+            }
+
+        if isinstance(value, list):
+            return [ActionViewSet._to_json_safe(item) for item in value]
+
+        return value
+
     @action(detail=True, methods=["post"], url_path="execute")
     def execute(self, request, slug=None):
         action_obj = self.get_object()
-        serializer = ActionExecuteSerializer(data=request.data)
+        payload = self._build_execute_payload(request)
+        serializer = ActionExecuteSerializer(data=payload)
         serializer.is_valid(raise_exception=True)
 
+        # responses contém UploadedFile objects
         responses = serializer.validated_data["questions"]
-        responses_with_files = self._merge_uploaded_files(
-            responses,
-            request.FILES,
-        )
-        persisted_responses = self._to_json_safe(responses_with_files)
 
         autodiscover_actions()
         registered = get_registered_actions().get(action_obj.slug)
         if registered:
             try:
-                # Responses it's a kwargs dict, so we can unpack it directly into the function call
                 action_function = registered.function
-                result = action_function(responses_with_files)
+                result = action_function(responses)
             except Exception as exc:
                 result = {
                     "status": "error",
@@ -195,6 +199,9 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
                     "Execute o comando vert_helper_setup para sincronizar."
                 ),
             }
+
+        # Converter para JSON-safe antes de persistir
+        persisted_responses = self._to_json_safe(responses)
 
         execution = ActionExecution.objects.create(
             action=action_obj,

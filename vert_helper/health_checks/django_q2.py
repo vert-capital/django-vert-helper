@@ -43,7 +43,7 @@ def check_django_q2_queue(context: dict | None = None) -> HealthCheckResult:
     try:
         # ===== ESTRATÉGIA 1: Verificar Stats =====
         stat = Stat.get_all()
-        
+
         if not stat:
             # Nenhuma estatística = cluster não respondendo
             return HealthCheckResult(

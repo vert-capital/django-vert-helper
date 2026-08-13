@@ -37,7 +37,7 @@ VERT_HELPER = {
         "postgres": {
             "function": "vert_helper.health_checks.postgres.check_postgres",
         },
-        
+
         # Novo: Health check de workers RQ
         "rq_workers": {
             "function": "vert_helper.health_checks.rq_workers.check_rq_workers_alive",
@@ -45,7 +45,7 @@ VERT_HELPER = {
                 "expected_count": 3,  # Você espera 3 workers
             },
         },
-        
+
         # Outras funções de health check...
     },
 }

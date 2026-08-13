@@ -1,11 +1,11 @@
 from django.core.management.base import BaseCommand
 
 from vert_helper.async_manager import ensure_scheduler_registration
+from vert_helper.management.utils import create_helper_auth_user
 from vert_helper.sync import (
     sync_actions_from_registry,
     sync_services_from_settings,
 )
-from vert_helper.management.utils import create_helper_auth_user
 
 
 class Command(BaseCommand):
