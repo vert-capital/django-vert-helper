@@ -86,7 +86,7 @@ python manage.py vert_helper_setup
 Esse comando:
 - ✅ Sincroniza todos os **serviços** configurados no settings (nativos + custom)
 - ✅ Descobre e registra todas as **ações** decoradas com `@helper_action`
-- ✅ Registra a **task de health check** (se scheduler configurado)
+- ✅ Registra as **tasks agendadas** (health check e limpeza de logs, se scheduler configurado)
 - ✅ Soft delete de serviços removidos (mantém histórico)
 
 ## 💻 Uso
@@ -244,7 +244,7 @@ Sempre que adicionar um novo `@helper_action`, você pode:
 ```bash
 python manage.py vert_helper_setup
 ```
-Sincroniza tudo: serviços, ações e task agendada.
+Sincroniza tudo: serviços, ações e tasks agendadas.
 
 **Opção B - Apenas Ações:**
 ```bash
@@ -443,20 +443,25 @@ Na funcao Python registrada com `@helper_action`, o arquivo chega dentro de `res
 }
 ```
 
-### 5. Saúde da Aplicação (sem Django)
+### 5. Saúde da Aplicação (app-health)
 
 **GET** `/api/helper/v1/app-health/`
 
 ```bash
-curl http://localhost:8000/api/helper/v1/app-health/
+curl http://localhost:8080/api/helper/v1/app-health/
 ```
 
 **Resposta:**
 ```json
 {
     "status": "stable",
+    "timestamp": "2026-08-25T10:30:00-03:00"
 }
 ```
+
+Observações:
+- Este endpoint deve ser exposto pelo Nginx lendo `/app/health.json`.
+- A configuração operacional de Docker/Nginx/entrypoint está no manual 2.0: `MANUAL_DE_IMPLEMENTACAO_V2.MD`.
 
 ## 🔧 Configurações Avançadas
 
@@ -560,88 +565,16 @@ python manage.py rqworker
 
 ## 🐳 Docker
 
-Consulte o `Dockerfile-example` para integração com Docker e cronjob de health check.
+A implementação operacional de container foi movida para o manual 2.0:
 
-### Expor app-health via Nginx
+- `MANUAL_DE_IMPLEMENTACAO_V2.MD`
 
-Para garantir que `GET /api/helper/v1/app-health/` funcione mesmo se o Django estiver indisponível, o JSON deve ser servido diretamente pelo Nginx.
+Esse guia cobre o fluxo atualizado de:
 
-1. Gere/atualize o arquivo `/app/health.json` no container (via script periódico).
-2. Configure o Nginx para responder esse arquivo sem proxy para Django.
-
-Exemplo de bloco no Nginx:
-
-```nginx
-location /api/helper/v1/app-health/ {
-    alias /app/health.json;
-    default_type application/json;
-    add_header Cache-Control "no-store";
-}
-```
-
-### Integração no Dockerfile (app + Nginx)
-
-Exemplo mínimo de integração no Dockerfile:
-
-```dockerfile
-FROM python:3.12-trixie
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx curl git \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-COPY . /app
-COPY ./health_check.sh /app/health_check.sh
-RUN chmod +x /app/health_check.sh
-
-# Configuração do Nginx com endpoint estático de app-health
-COPY ./docker/nginx/default.conf /etc/nginx/conf.d/default.conf
-
-# Atualiza /app/health.json no boot e a cada 10 min (sem cron de sistema)
-CMD ["bash", "-lc", "(sleep 60; bash /app/health_check.sh || true; while true; do sleep 600; bash /app/health_check.sh || true; done) & nginx && exec gunicorn --bind 0.0.0.0:8000 main.wsgi"]
-```
-
-Arquivo de configuração do Nginx (`docker/nginx/default.conf`):
-
-```nginx
-server {
-    listen 8080;
-    server_name _;
-
-    location /api/helper/v1/app-health/ {
-        alias /app/health.json;
-        default_type application/json;
-        add_header Cache-Control "no-store";
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Docker compose
-```docker compose
-services:
-  app:
-    build:
-      context: ./src
-      args:
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    env_file: ./src/.env
-    environment:
-      - PYTHONUNBUFFERED=1
-```
-
-Observações:
-- O endpoint de app-health deve apontar para o Nginx (porta publicada do container).
-- Se já existir reverse proxy externo (Ingress/Nginx/Traefik), mantenha a mesma lógica: rota de app-health servindo arquivo estático e demais rotas indo para a aplicação.
+- `Dockerfile`
+- `entrypoint-otel.sh`
+- `health_check.sh`
+- `nginx` (`nginx.dev.conf` e `nginx.prd.conf`)
 
 ## 📊 Django Admin
 

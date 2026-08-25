@@ -3,6 +3,36 @@
 Biblioteca para health checks de servicos, acoes operacionais e
 configuracao centralizada via `settings.py`.
 
+## Resumo Executivo
+
+O `django-vert-helper` e uma biblioteca para padronizar observabilidade operacional e execucao de acoes no ecossistema Django.
+
+Principais entregas:
+
+- Monitoramento de servicos com persistencia de historico (`ServiceHealth`).
+- Catalogo de acoes operacionais com formulario dinamico e execucao via API.
+- Sincronizacao automatica de servicos e acoes com `vert_helper_setup`.
+- Integracao com agendadores (`django_q` e `rq`) para verificacoes periodicas e limpeza de logs.
+- Endpoint de app-health externo via Nginx com `health.json` (fluxo de implantacao 2.0).
+
+Quando usar:
+
+- Projetos Django que precisam expor status operacional de forma simples e auditavel.
+- Times que executam rotinas operacionais via API com trilha de execucao.
+- Ambientes containerizados que exigem healthcheck desacoplado da app principal.
+
+Superficie de API:
+
+- `GET /api/helper/v1/healthcare/`
+- `GET /api/helper/v1/actions/`
+- `GET /api/helper/v1/actions/<slug>/`
+- `POST /api/helper/v1/actions/<slug>/execute/`
+
+Documentacao recomendada por objetivo:
+
+- Uso funcional e configuracao: [MANUAL_DE_USO.MD](MANUAL_DE_USO.MD)
+- Implantacao operacional 2.0 (Docker, entrypoint, nginx, app-health): [MANUAL_DE_IMPLEMENTACAO_V2.MD](MANUAL_DE_IMPLEMENTACAO_V2.MD)
+
 ## Instalacao no projeto Django
 
 1. Adicione app em `INSTALLED_APPS`:
@@ -168,6 +198,44 @@ Se `SCHEDULER` estiver vazio (`None`), nenhuma tarefa é agendada automaticament
 
 ### Mais informações
 - Manual de uso: [MANUAL_DE_USO.MD](MANUAL_DE_USO.MD)
+- Manual de implementacao 2.0: [MANUAL_DE_IMPLEMENTACAO_V2.MD](MANUAL_DE_IMPLEMENTACAO_V2.MD)
+
+## Implementacao 2.0 (Container + App Health)
+
+Esta secao integra o fluxo operacional da PR 939 (backend), focado em runtime de container.
+
+### Arquitetura de runtime
+
+1. O backend Django/Gunicorn sobe na porta interna `8000`.
+2. O `entrypoint-otel.sh` inicia sidecars em background:
+    - `nginx`
+    - loop do `health_check.sh`
+3. O `health_check.sh` consulta `GET /api/helper/v1/healthcare/` local.
+4. O script escreve `/app/health.json` com status `stable` ou `failed`.
+5. O `nginx` publica `GET /api/helper/v1/app-health/` lendo esse arquivo.
+
+### Checklist rapido
+
+1. Instalar pacotes de runtime na imagem: `nginx` e `curl`.
+2. Copiar `health_check.sh` para `/app/health_check.sh` e aplicar `chmod +x`.
+3. Copiar conf de producao do nginx para `/etc/nginx/conf.d/default.conf`.
+4. No `entrypoint-otel.sh`, iniciar nginx e loop de health check em background.
+5. No setup do entrypoint, executar `vert_helper_setup` e `init_helper`.
+6. Garantir Gunicorn com bind `:8000`.
+7. Garantir `proxy_pass` do nginx apontando para `127.0.0.1:8000` em producao.
+
+### Endpoints de validacao
+
+- Health interno: `GET /api/helper/v1/healthcare/`
+- Health externo (nginx): `GET /api/helper/v1/app-health/`
+
+### Arquivos de referencia
+
+- Script de health: [health_check.sh](health_check.sh)
+- Entrypoint de runtime: [entrypoint-otel.sh](entrypoint-otel.sh)
+- Nginx dev: [nginx/nginx.dev.conf](nginx/nginx.dev.conf)
+- Nginx prd: [nginx/nginx.prd.conf](nginx/nginx.prd.conf)
+- Guia detalhado: [MANUAL_DE_IMPLEMENTACAO_V2.MD](MANUAL_DE_IMPLEMENTACAO_V2.MD)
 
 ## Documentacao Tecnica
 
