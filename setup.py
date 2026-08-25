@@ -20,7 +20,7 @@ setup(
         "django-rq>=4.1, <5.0",
         "django-q2>=1.9.0, <2.0",
         "boto3>=1.42.48, <2.0",
-        "confluent-kafka>=1.9.2, <2.0",
+        "confluent-kafka>=1.9.2, <3.0",
         "psycopg2>=2.9.10, <3.0",
     ],
     python_requires=">=3.12",
