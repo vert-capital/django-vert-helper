@@ -158,6 +158,8 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @staticmethod
     def _to_json_safe(value):
+        from django.contrib.auth import get_user_model
+
         """Converte valores para JSON-safe (UploadedFile -> dict)."""
         if isinstance(value, UploadedFile):
             return {
@@ -165,7 +167,11 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
                 "size": value.size,
                 "content_type": value.content_type,
             }
-
+        User = get_user_model()
+        if isinstance(value, User):
+            return {
+                "email": value.email,
+            }
         if isinstance(value, dict):
             return {
                 key: ActionViewSet._to_json_safe(item)
