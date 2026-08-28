@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from django.test import TestCase
 
 from vert_helper.models import Action, Service, ServiceHealth

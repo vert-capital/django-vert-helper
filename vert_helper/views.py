@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models import Exists, OuterRef, Prefetch
 from django.db.models.functions import Lower
@@ -182,7 +183,11 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
 
         # responses contém UploadedFile objects
         responses = serializer.validated_data["questions"]
-
+        executed_by = serializer.validated_data.get("executed_by", None)
+        if executed_by:
+            executed_by_user = get_user_model().objects.filter(email=executed_by).first()
+            executed_by = executed_by_user
+        responses["executed_by"] = executed_by
         autodiscover_actions()
         registered = get_registered_actions().get(action_obj.slug)
         if registered:
@@ -213,9 +218,9 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
             responses=persisted_responses,
             result=result,
             executed_by=(
-                request.user
-                if request.user.is_authenticated
-                else None
+                executed_by
+                if executed_by
+                else request.user
             ),
         )
 

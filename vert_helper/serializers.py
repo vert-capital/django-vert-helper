@@ -104,3 +104,4 @@ class QuestionsField(serializers.Field):
 
 class ActionExecuteSerializer(serializers.Serializer):
     questions = QuestionsField(default=dict)
+    executed_by = serializers.EmailField(allow_null=True, required=False)
