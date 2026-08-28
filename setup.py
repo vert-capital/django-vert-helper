@@ -7,7 +7,7 @@ README_PATH = BASE_DIR / "README.md"
 
 setup(
     name="django-vert-helper",
-    version="1.1.2",
+    version="1.1.3",
     description="Biblioteca para health checks e acoes operacionais",
     long_description=README_PATH.read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

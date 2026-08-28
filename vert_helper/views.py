@@ -151,7 +151,10 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
                     question_id = field_name
                 questions[question_id] = uploaded_file
 
-        return {"questions": questions}
+        return {
+            "questions": questions,
+            "executed_by": data.get("executed_by", request.user),
+        }
 
     @staticmethod
     def _to_json_safe(value):
