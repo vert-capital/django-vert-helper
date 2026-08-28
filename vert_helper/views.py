@@ -187,6 +187,8 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         if executed_by:
             executed_by_user = get_user_model().objects.filter(email=executed_by).first()
             executed_by = executed_by_user
+        else:
+            executed_by = request.user
         responses["executed_by"] = executed_by
         autodiscover_actions()
         registered = get_registered_actions().get(action_obj.slug)
